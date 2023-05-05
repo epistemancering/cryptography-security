@@ -1,7 +1,7 @@
 const path = require("path");
 const express = require("express");
 const session = require("express-session");
-
+const bcrypt = require("bcryptjs");
 // Mock database to store usernames and passwords by username.
 const db = {
   test: {
@@ -74,23 +74,31 @@ app.get("/", (req, res) => {
 
 // Handle user login.
 app.post("/login", (req, res) => {
-  // TODO: Get the username and password from form data
-  // TODO: Attempt to retrieve the user from the database
-  // TODO: If the user exists, check if the password matches the user's password
-  // TODO: Log the user in by storing their username in the session
-  // TODO: Display a success message and redirect to /login/success
-  // TODO: If the user doesn't exist or the password doesn't match, display an error
-  //       message and redirect to the homepage
+  const { username, password } = req.body;
+  console.log(`username: ${username}, password: ${password}`);
+  const user = db[username];
+  if (bcrypt.compareSync(password, user?.password)) {
+    req.session.regenerate(() => {
+      req.session.username = username;
+      req.session.success = "Logged in successfully!";
+      res.redirect("/login/success");
+    });
+  } else {
+    req.session.error =
+      "Authentication failed, please check your username and password.";
+    res.redirect("/");
+  }
 });
 
 // Handle user registration.
 app.post("/register", (req, res) => {
-  // TODO: Get the username and password from form data
-  // TODO: Check if username already exists in the database
-  // TODO: If it doesn't, create a new user and store it in the database
-  // TODO: Display a success message to the user
-  // TODO: If the user already exists, display an error message
-  // TODO: Either way, redirect to the homepage so they can log in
+  if (db[req.body.username]) {
+    req.session.error = "That name is taken."
+  } else {
+    db[req.body.username] = { "username": req.body.username, "password": bcrypt.hashSync(req.body.password) }
+    req.session.success = "Successfully created account!"
+  }
+  res.redirect("/")
 });
 
 // A restricted route that can only be accessed if the user is logged in.
